@@ -289,7 +289,7 @@ def _get_data(params: dict[str, Any], engines: dict[str, Any]) -> pd.DataFrame:
 
 _TOOL_HANDLERS: dict[str, Any] = {
     "forecast_predict": _forecast,
-    "explain_prediction": _explain,
+    "forecast_explain_drivers": _explain,
     "explain_global": _explain_global,
     "simulate_scenario": _simulate,
     "optimize_parameters": _optimize,

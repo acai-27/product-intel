@@ -61,7 +61,7 @@ Example 1: "Why did revenue drop for the worst product this week vs last week?"
     }},
     {{
       "step_id": "s2",
-      "tool_id": "explain_prediction",
+      "tool_id": "forecast_explain_drivers",
       "params": {{"target_metric": "revenue"}},
       "input_from": {{
         "product_id": {{"step": "s1", "field": "product_id"}},
@@ -122,7 +122,7 @@ Example 3: "Is revenue anomalous today? Why?"
     }},
     {{
       "step_id": "s3",
-      "tool_id": "explain_prediction",
+      "tool_id": "forecast_explain_drivers",
       "params": {{"target_metric": "revenue", "date": "2025-12-31"}},
       "input_from": {{"product_id": {{"step": "s1", "field": "product_id"}}}},
       "depends_on": ["s1", "s2"]

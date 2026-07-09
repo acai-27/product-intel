@@ -64,7 +64,7 @@ def build_from_step(step_id: str, tool_id: str, data: dict[str, Any]) -> list[di
         return []
     builders: dict[str, list[Callable[..., list[dict[str, Any]]]]] = {
         "forecast_predict": [_build_forecast],
-        "explain_prediction": [_build_shap],
+        "forecast_explain_drivers": [_build_shap],
         "nl2sql_query": [_build_nl2sql],
         "analytics_trend": [_build_trend],
         "simulate_scenario": [_build_simulation],

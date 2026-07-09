@@ -17,7 +17,7 @@ STANDARD_DAGS: dict[str, list[dict[str, Any]]] = {
     ],
 
     "explanation_request": [
-        {"step_id": "s1", "tool_id": "explain_prediction", "params": {"product_id": "P001", "target_metric": "revenue"}, "depends_on": []},
+        {"step_id": "s1", "tool_id": "forecast_explain_drivers", "params": {"product_id": "P001", "target_metric": "revenue"}, "depends_on": []},
     ],
 
     "scenario_simulation": [

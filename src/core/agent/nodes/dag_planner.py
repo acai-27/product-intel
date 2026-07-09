@@ -313,7 +313,7 @@ def _normalize_steps(
                     explicit_value = params.get(param_name)
                     always_wire = param_name in ("product_id", "category")
                     force_date = param_name in ("date", "target_date") and tool_id in (
-                        "explain_prediction",
+                        "forecast_explain_drivers",
                         "anomaly_detect",
                         "forecast_predict",
                         "simulate_scenario",

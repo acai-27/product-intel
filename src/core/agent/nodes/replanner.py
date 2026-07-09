@@ -37,7 +37,7 @@ Failed plan:
 Rules:
 - Fix only what failed. Keep successful tool choices when possible.
 - Put explicit product_id/date from the user query directly in params — do NOT wire date from NL2SQL unless that step SELECTs date.
-- For explain_prediction after forecast_predict, wire date from the forecast step or put the latest data date in params.
+- For forecast_explain_drivers after forecast_predict, wire date from the forecast step or put the latest data date in params.
 - Never invent placeholder values.
 
 Output ONLY JSON:

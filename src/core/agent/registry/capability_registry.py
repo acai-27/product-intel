@@ -19,13 +19,13 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "horizon_days": {"type": "int", "required": False, "default": 30},
         },
         "output_schema": "{ forecast_total_revenue: float, forecast_total_profit: float, forecast_total_orders: float, daily_details: [{date, revenue, profit, orders}] }",
-        "chains_into": ["explain_prediction", "simulate_scenario", "decision_ask"],
+        "chains_into": ["forecast_explain_drivers", "simulate_scenario", "decision_ask"],
         "source_module": "src.core.forecaster.ProductForecaster.forecast",
         "requires_data": True,
     },
 
     # ── Explainability ───────────────────────────────────────────────────
-    "explain_prediction": {
+    "forecast_explain_drivers": {
         "description": "EXACTLY computes SHAP feature importance for one product, one metric, and one specific date. It tells you WHY a metric changed on that day. DOES NOT forecast, simulate, or aggregate multiple products.",
         "when_to_call": "Call when the user asks why a metric changed for a known product/date, or after a prior step discovers product_id and date.",
         "input_schema": {
@@ -245,9 +245,9 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "target_date": {"type": "str (YYYY-MM-DD)", "required": True},
             "kpi": {"type": "str", "required": False, "default": "revenue"},
         },
-        "output_schema": "{ severity_score, status, explanation, business_impact, change_point_detected, ... }",
-        "chains_into": ["explain_prediction", "decision_ask"],
-        "source_module": "src.core.anomaly.engine.AnomalyDetectionEngine.run_detection",
+        "output_schema": "{ summary: {total_points, anomaly_count}, graph_data: [{date, value, is_anomaly, classification, deviation_pct}], anomalies: [...] }",
+        "chains_into": ["forecast_explain_drivers", "decision_ask"],
+        "source_module": "src.core.new_anomaly.engine.AnomalyDetectionEngineV2.run_detection",
         "requires_data": True,
     },
     "anomaly_rank_products": {
@@ -257,9 +257,9 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "date": {"type": "str (YYYY-MM-DD)", "required": True},
             "kpi": {"type": "str", "required": False, "default": "revenue"},
         },
-        "output_schema": "{ ranked_products[], risk_profiles }",
-        "chains_into": ["anomaly_detect", "explain_prediction"],
-        "source_module": "src.core.anomaly.engine.AnomalyDetectionEngine.get_top_products",
+        "output_schema": "{ top_10_critical_products: [{product_id, kpi, severity_score, status, percent_change}] }",
+        "chains_into": ["anomaly_detect", "forecast_explain_drivers"],
+        "source_module": "src.core.new_anomaly.engine.AnomalyDetectionEngineV2.get_top_products",
         "requires_data": True,
     },
 
@@ -275,7 +275,7 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "product_id": {"type": "str", "required": False},
         },
         "output_schema": "{ metrics_comparison: {revenue: {period1_sum, period2_sum, percentage_change}, ...}, drivers_summary[] }",
-        "chains_into": ["explain_prediction", "decision_ask"],
+        "chains_into": ["forecast_explain_drivers", "decision_ask"],
         "source_module": "src.core.analyzer.BusinessAnalyzer.compare_periods",
         "requires_data": True,
     },
@@ -287,7 +287,7 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "metric": {"type": "str", "required": False, "default": "revenue"},
         },
         "output_schema": "{ declining_products: [{product_id, slope, percentage_change, r_squared}] }",
-        "chains_into": ["explain_prediction", "anomaly_detect", "decision_ask"],
+        "chains_into": ["forecast_explain_drivers", "anomaly_detect", "decision_ask"],
         "source_module": "src.core.analyzer.BusinessAnalyzer.detect_declining_products",
         "requires_data": True,
     },
@@ -315,7 +315,7 @@ CAPABILITY_REGISTRY: dict[str, dict[str, Any]] = {
             "query": {"type": "str", "required": True},
         },
         "output_schema": "{ query: str, sql: str, columns: [str], rows: [dict], row_count: int, truncated: bool }",
-        "chains_into": ["explain_prediction", "analytics_trend", "anomaly_detect", "analysis_compare", "forecast_predict"],
+        "chains_into": ["forecast_explain_drivers", "analytics_trend", "anomaly_detect", "analysis_compare", "forecast_predict"],
         "source_module": "src.core.nl2sql.engine.NL2SQLEngine.ask",
         "requires_data": False,
     },

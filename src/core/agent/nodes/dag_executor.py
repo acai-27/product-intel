@@ -124,7 +124,7 @@ def execute_dag(state: AgentState, engines: dict[str, Any]) -> dict[str, Any]:
                         step_results, plan, str(step_id), param_name
                     )
                 if fallback is None and param_name in ("date", "target_date"):
-                    if tool_id in ("explain_prediction", "anomaly_detect", "anomaly_rank_products"):
+                    if tool_id in ("forecast_explain_drivers", "anomaly_detect", "anomaly_rank_products"):
                         fallback = get_reference_date().strftime("%Y-%m-%d")
                 if fallback is None:
                     continue

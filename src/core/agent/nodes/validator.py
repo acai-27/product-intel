@@ -30,11 +30,11 @@ _METRIC_TERMS: dict[str, tuple[str, ...]] = {
 
 _COMPLEX_QUERY_TOOL_HINTS: tuple[tuple[re.Pattern[str], tuple[str, ...], str], ...] = (
     (re.compile(r"\b(forecast|predict|projection|next|future)\b", re.I), ("forecast_predict",), "forecasting"),
-    (re.compile(r"\b(why|explain|driver|cause|root cause|diagnos)\b", re.I), ("explain_prediction", "decision_ask"), "explanation/diagnosis"),
+    (re.compile(r"\b(why|explain|driver|cause|root cause|diagnos)\b", re.I), ("forecast_explain_drivers", "decision_ask"), "explanation/diagnosis"),
     (re.compile(r"\b(should we|recommend|recommendation|decision|strategy|actionable)\b", re.I), ("decision_ask",), "decision recommendation"),
     (re.compile(r"\b(what if|what-if|simulate|simulation|scenario)\b", re.I), ("simulate_scenario", "decision_ask"), "scenario simulation"),
     (re.compile(r"\b(optimi[sz]e|maximi[sz]e|minimi[sz]e|best parameter|best discount|best price)\b", re.I), ("optimize_parameters",), "optimization"),
-    (re.compile(r"\b(anomal|outlier|unusual|spike|drop)\b", re.I), ("anomaly_detect", "anomaly_rank_products", "explain_prediction", "decision_ask"), "anomaly/diagnosis"),
+    (re.compile(r"\b(anomal|outlier|unusual|spike|drop)\b", re.I), ("anomaly_detect", "anomaly_rank_products", "forecast_explain_drivers", "decision_ask"), "anomaly/diagnosis"),
 )
 
 _RANKING_TERMS = re.compile(r"\b(top|highest|lowest|most|least|biggest|smallest|best|worst)\b", re.I)
