@@ -1,5 +1,10 @@
 """
 SQL validator — enforces read-only, allowlisted queries before execution.
+
+Note: This validator uses regex and keyword-based validation rather than AST parsing
+or libraries like sqlglot/sqlparse. It sanitizes input by removing comments, checking for
+forbidden keywords (e.g. INSERT, DELETE, DROP), verifying table allowlists via simple regexes,
+and enforcing SELECT-only statements with LIMIT clauses.
 """
 
 import re

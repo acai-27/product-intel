@@ -79,7 +79,7 @@ class ScenarioSimulator:
                     
                 # Boundary bounds
                 if var == "discount_pct":
-                    val = max(0.0, min(0.95, val))
+                    val = max(0.0, min(100.0, val))
                 elif var in ["marketing_spend", "shipping_fee"] and val < 0:
                     val = 0.0
                     

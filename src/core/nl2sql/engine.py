@@ -2,6 +2,9 @@
 NL2SQL Engine — ask-style natural language to SQL pipeline.
 
 Flow: question → generate SQL → validate → execute → (optional repair retry)
+
+Note: This engine uses the Gemma model (via NVIDIA NIM primary or Ollama fallback)
+for SQL generation, rather than Llama 3.1.
 """
 
 from typing import Any

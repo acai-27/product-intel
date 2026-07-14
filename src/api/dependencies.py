@@ -29,7 +29,7 @@ def _safe_date(value: Any) -> Optional[pd.Timestamp]:
 class AppState:
     """Singleton holding initialized core engines to avoid reloading models/datasets."""
     db_engine: Optional[Engine] = None
-    historical_df: Optional[pd.DataFrame] = None
+    df_historical: Optional[pd.DataFrame] = None
     
     # Core Engines
     forecaster: Optional[ProductForecaster] = None

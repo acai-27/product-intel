@@ -38,6 +38,6 @@ frontend/dist/
 frontend/dist-ssr/
 __pycache__/*
 new/*
-
+data/test.db
 src/core/analytics/__pycache__/*
 src/api/__pycache__/

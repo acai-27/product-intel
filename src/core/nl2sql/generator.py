@@ -1,5 +1,5 @@
 """
-SQL generator — uses the LLM to convert natural language to SQL.
+SQL generator — uses the LLM (Gemma via NVIDIA NIM / Ollama) to convert natural language to SQL.
 """
 
 from typing import Any
