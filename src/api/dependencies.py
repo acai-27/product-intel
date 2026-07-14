@@ -2,12 +2,12 @@ import os
 import pandas as pd
 from functools import lru_cache
 from typing import Generator, Optional, Any
+from sqlalchemy import Engine
 
 from src.core.forecaster import ProductForecaster
 from src.core.explainer import PredictionExplainer
+from src.core.new_anomaly.engine import AnomalyDetectionEngineV2
 from src.core.simulator import ScenarioSimulator
-from src.core.optimizer import RevenueOptimizer
-from src.core.analyzer import BusinessAnalyzer
 from src.utils.logger import setup_logger
 
 logger = setup_logger("dependencies")
@@ -27,17 +27,16 @@ def _safe_date(value: Any) -> Optional[pd.Timestamp]:
 
 # In-memory global cache for files that should load only once
 class AppState:
-    df_historical: Optional[pd.DataFrame] = None
+    """Singleton holding initialized core engines to avoid reloading models/datasets."""
+    db_engine: Optional[Engine] = None
+    historical_df: Optional[pd.DataFrame] = None
+    
+    # Core Engines
     forecaster: Optional[ProductForecaster] = None
     explainer: Optional[PredictionExplainer] = None
+    anomaly_engine: Optional[AnomalyDetectionEngineV2] = None
     simulator: Optional[ScenarioSimulator] = None
-    optimizer: Optional[RevenueOptimizer] = None
-    analyzer: Optional[BusinessAnalyzer] = None
-    analytics_engine: Optional[Any] = None
-    sensitivity_engine: Optional[Any] = None
     planner_agent: Optional[Any] = None
-    anomaly_engine: Optional[Any] = None
-    history_encoder: Optional[Any] = None
     llm_client: Optional[Any] = None
     nl2sql_engine: Optional[Any] = None
 
@@ -80,7 +79,7 @@ def get_historical_df_from_db(
     db_url = os.getenv("NEON_URL") or os.getenv("DATABASE_URL")
     if db_url and not db_url.startswith("sqlite"):
         try:
-            from src.core.history.storage.database import get_neon_connection
+            from src.core.database import get_neon_connection
 
             query = "SELECT * FROM product_performance WHERE 1=1"
             params = []
@@ -133,7 +132,7 @@ def get_historical_df_from_db(
     else:
         # Try SQLite first, otherwise CSV
         try:
-            from src.core.history.storage.database import engine
+            from src.core.database import engine
             from sqlalchemy import text
             query = "SELECT * FROM product_performance WHERE 1=1"
             params = {}
@@ -172,7 +171,7 @@ def get_max_date_from_db() -> pd.Timestamp:
     db_url = os.getenv("NEON_URL") or os.getenv("DATABASE_URL")
     if db_url and not db_url.startswith("sqlite"):
         try:
-            from src.core.history.storage.database import get_neon_connection
+            from src.core.database import get_neon_connection
             conn = get_neon_connection()
             try:
                 with conn.cursor() as cur:
@@ -185,7 +184,7 @@ def get_max_date_from_db() -> pd.Timestamp:
         except Exception as e:
             logger.error(f"Failed to get max date from db: {e}")
     try:
-        from src.core.history.storage.database import engine
+        from src.core.database import engine
         from sqlalchemy import text
         with engine.connect() as conn:
             res = conn.execute(text("SELECT MAX(date) FROM product_performance")).scalar()
@@ -215,24 +214,6 @@ def load_app_state(models_dir: str = "models", preprocessor_path: str = "models/
         logger.info("Initializing Scenario Simulator...")
         AppState.simulator = ScenarioSimulator(AppState.forecaster)
         
-    if AppState.optimizer is None:
-        logger.info("Initializing Parameter Optimizer...")
-        AppState.optimizer = RevenueOptimizer(AppState.forecaster)
-        
-    if AppState.analyzer is None:
-        logger.info("Initializing Business Analyzer...")
-        AppState.analyzer = BusinessAnalyzer()
-
-    if AppState.analytics_engine is None:
-        logger.info("Initializing Analytics Engine...")
-        from src.core.analytics.engine import AnalyticsEngine
-        AppState.analytics_engine = AnalyticsEngine(AppState.df_historical)
-
-    if AppState.sensitivity_engine is None:
-        logger.info("Initializing Sensitivity Engine...")
-        from src.core.sensitivity import SensitivityEngine
-        AppState.sensitivity_engine = SensitivityEngine(AppState.forecaster)
-
     if AppState.planner_agent is None:
         logger.info("Initializing LLM Planner Agent...")
         from src.core.agent.planner import LLMPlannerAgent
@@ -240,26 +221,14 @@ def load_app_state(models_dir: str = "models", preprocessor_path: str = "models/
             forecaster=AppState.forecaster,
             explainer=AppState.explainer,
             simulator=AppState.simulator,
-            optimizer=AppState.optimizer,
-            analyzer=AppState.analyzer,
-            analytics_engine=AppState.analytics_engine,
-            sensitivity_engine=AppState.sensitivity_engine,
             df_historical=AppState.df_historical
         )
 
     if AppState.anomaly_engine is None:
         logger.info("Initializing Anomaly Detection Engine...")
-        from src.core.anomaly.engine import AnomalyDetectionEngine
-        AppState.anomaly_engine = AnomalyDetectionEngine(
-            forecaster=AppState.forecaster,
-            explainer=AppState.explainer,
-            df_historical=AppState.df_historical
+        AppState.anomaly_engine = AnomalyDetectionEngineV2(
+            data_path="temporal_dataset.csv"
         )
-
-    if AppState.history_encoder is None:
-        logger.info("Initializing History Encoder...")
-        from src.core.history.embeddings.encoder import SentenceTransformerEncoder
-        AppState.history_encoder = SentenceTransformerEncoder()
 
     # ── LangGraph Pipeline ───────────────────────────────────────────
     if AppState.llm_client is None:
@@ -269,7 +238,7 @@ def load_app_state(models_dir: str = "models", preprocessor_path: str = "models/
 
     if AppState.nl2sql_engine is None:
         logger.info("Initializing NL2SQL Engine...")
-        from src.core.history.storage.database import engine as db_engine
+        from src.core.database import engine as db_engine
         from src.core.nl2sql import NL2SQLEngine
         AppState.nl2sql_engine = NL2SQLEngine(
             llm_client=AppState.llm_client,
@@ -286,12 +255,7 @@ def load_app_state(models_dir: str = "models", preprocessor_path: str = "models/
                     "forecaster": AppState.forecaster,
                     "explainer": AppState.explainer,
                     "simulator": AppState.simulator,
-                    "optimizer": AppState.optimizer,
-                    "analyzer": AppState.analyzer,
-                    "analytics_engine": AppState.analytics_engine,
-                    "sensitivity_engine": AppState.sensitivity_engine,
                     "anomaly_engine": AppState.anomaly_engine,
-                    "history_encoder": AppState.history_encoder,
                     "nl2sql_engine": AppState.nl2sql_engine,
                     "llm_client": AppState.llm_client,
                 },
@@ -317,26 +281,6 @@ def get_simulator() -> ScenarioSimulator:
     if AppState.simulator is None:
         load_app_state()
     return AppState.simulator
-
-def get_optimizer() -> RevenueOptimizer:
-    if AppState.optimizer is None:
-        load_app_state()
-    return AppState.optimizer
-
-def get_analyzer() -> BusinessAnalyzer:
-    if AppState.analyzer is None:
-        load_app_state()
-    return AppState.analyzer
-
-def get_analytics_engine():
-    if AppState.analytics_engine is None:
-        load_app_state()
-    return AppState.analytics_engine
-
-def get_sensitivity_engine():
-    if AppState.sensitivity_engine is None:
-        load_app_state()
-    return AppState.sensitivity_engine
 
 def get_planner_agent():
     if AppState.planner_agent is None:

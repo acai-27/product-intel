@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from contextlib import asynccontextmanager
 
-from src.api.routers import forecast, explanation, scenario, optimization, analysis, analytics, sensitivity, agent, anomaly, history, decision
+from src.api.routers import forecast, explanation, scenario, agent, anomaly
 from src.api.dependencies import load_app_state
 from src.utils.logger import setup_logger
 
@@ -17,9 +17,8 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing application models and dataset cache...")
     try:
         # Import database config and models to register on Base metadata before create_all
-        from src.core.history.storage.database import engine, Base
-        import src.core.history.storage.models
-        import src.core.decision.storage.models
+        from src.core.database import engine, Base
+        import src.core.models
         
         logger.info("Ensuring database tables are created...")
         Base.metadata.create_all(bind=engine)
@@ -33,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AI-Powered Business Analytics Assistant ML Microservice",
-    description="Production-grade independent intelligence engine and ML microservice. Exposes forecasting, explainability, scenario simulations, and parameter optimizations.",
+    description="Production-grade intelligence engine and ML microservice for forecasting, explainability, scenario simulation, anomaly scanning, and NL2SQL data lookup.",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -59,14 +58,8 @@ async def health_check():
 app.include_router(forecast.router, prefix="/api/v1")
 app.include_router(explanation.router, prefix="/api/v1")
 app.include_router(scenario.router, prefix="/api/v1")
-app.include_router(optimization.router, prefix="/api/v1")
-app.include_router(analysis.router, prefix="/api/v1")
-app.include_router(analytics.router, prefix="/api/v1")
-app.include_router(sensitivity.router, prefix="/api/v1")
 app.include_router(agent.router, prefix="/api/v1")
 app.include_router(anomaly.router, prefix="/api/v1")
-app.include_router(history.router, prefix="/api/v1")
-app.include_router(decision.router, prefix="/api/v1")
 
 # Serve static files from React build directory
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

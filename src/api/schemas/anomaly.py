@@ -15,28 +15,25 @@ class GlobalAnomalyRequest(BaseModel):
     target_date: Optional[str] = Field(None, example="2025-06-15")
     kpi: str = Field("revenue", example="revenue")
 
+class AnomalySummary(BaseModel):
+    total_points: int
+    anomaly_count: int
+    positive_opportunities: int
+    negative_risks: int
+
+class AnomalyPoint(BaseModel):
+    date: str
+    value: float
+    is_anomaly: bool
+    classification: Optional[str] = None
+    deviation_pct: float
+
 class AnomalyResponse(BaseModel):
     product_id: str
-    target_date: str
     kpi: str
-    expected_value: float
-    actual_value: float
-    residual: float
-    percentage_change: float
-    severity_score: float
-    status: str
-    change_point_detected: bool
-    change_point_details: Dict[str, Any]
-    multivariate_details: Dict[str, Any]
-    business_rules_triggered: List[Dict[str, Any]]
-    broken_relations: List[Dict[str, Any]]
-    business_impact: Dict[str, Any]
-    historical_context: Dict[str, Any]
-    forecast_monitoring: Dict[str, Any]
-    explanation: Dict[str, Any]
-    confidence_interval_95: List[float]
-    outside_ci: bool
-    trend_details: Dict[str, Any]
+    summary: AnomalySummary
+    graph_data: List[AnomalyPoint]
+    anomalies: List[AnomalyPoint]
 
 class CategoryAnomalyResponse(BaseModel):
     category: str
@@ -54,14 +51,9 @@ class ProductRankingDetail(BaseModel):
     percent_change: float
 
 class GlobalRankingResponse(BaseModel):
-    target_date: str
-    kpi: str
+    target_date: Optional[str] = None
+    kpi: Optional[str] = None
     top_10_critical_products: List[ProductRankingDetail]
-    top_revenue_risk: List[ProductRankingDetail]
-    top_profit_risk: List[ProductRankingDetail]
-    most_unusual_products: List[ProductRankingDetail]
-    products_recovering: List[ProductRankingDetail]
-    products_improving: List[ProductRankingDetail]
 
 class AnomalyScanRequest(BaseModel):
     product_id: str = Field(..., example="P001")

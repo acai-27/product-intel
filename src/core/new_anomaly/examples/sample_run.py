@@ -1,10 +1,10 @@
 import os
 import sys
 
-# Add the parent directory to the path so we can import anomaly_detect
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add the repository root to the path so we can import the canonical anomaly package
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))
 
-from anomaly_detect.service import detect_anomalies
+from src.core.new_anomaly.service import detect_anomalies
 
 def run_example():
     print("Loading product P002, finding revenue anomalies over the last 90 days...")

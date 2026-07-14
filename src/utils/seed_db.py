@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 # Load env variables from .env if present
 load_dotenv()
 
-from src.core.history.storage.database import engine, Base
-from src.core.history.storage.models import ProductPerformance
+from src.core.database import engine, Base
+from src.core.models import ProductPerformance
 
 def seed_database(csv_path: str = "temporal_dataset.csv"):
     db_url = os.getenv("NEON_URL") or os.getenv("DATABASE_URL")

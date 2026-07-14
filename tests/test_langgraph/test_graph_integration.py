@@ -30,12 +30,7 @@ def _mock_engines() -> dict:
         "forecaster": MagicMock(),
         "explainer": MagicMock(),
         "simulator": MagicMock(),
-        "optimizer": MagicMock(),
-        "analyzer": MagicMock(),
-        "analytics_engine": MagicMock(),
-        "sensitivity_engine": MagicMock(),
         "anomaly_engine": MagicMock(),
-        "history_encoder": MagicMock(),
         "nl2sql_engine": MagicMock(),
     }
 
@@ -51,7 +46,7 @@ class TestGreetingFlow:
 
         assert result["intent"] == "greeting"
         assert result["route_called"] == "greeting"
-        assert "Business Analytics Assistant" in result["final_response"]
+        assert result["final_response"] == ""
         # LLM should NOT be called for greetings
         mock_llm.generate_json.assert_not_called()
         mock_llm.generate.assert_not_called()
@@ -81,16 +76,26 @@ class TestAnalyticalFlow:
 
     def test_forecast_uses_llm_planner(self) -> None:
         mock_llm = MagicMock()
-        mock_llm.generate_json.return_value = {
-            "reasoning": "Single-step forecast for P001.",
-            "dag": [{
-                "step_id": "s1",
-                "tool_id": "forecast_predict",
-                "params": {"product_id": "P001", "horizon_days": 30},
-                "depends_on": [],
-            }],
-        }
-
+        mock_llm.generate_json.side_effect = [
+            {
+                "intent": "analytical",
+                "confidence": 0.95,
+                "extracted_params": {
+                    "product_id": "P001",
+                    "target_metric": "revenue",
+                    "query": "Forecast revenue for P001",
+                },
+            },
+            {
+                "reasoning": "Single-step forecast for P001.",
+                "dag": [{
+                    "step_id": "s1",
+                    "tool_id": "forecast_predict",
+                    "params": {"product_id": "P001", "horizon_days": 30},
+                    "depends_on": [],
+                }],
+            },
+        ]
         engines = _mock_engines()
         import pandas as pd
         engines["forecaster"].forecast.return_value = pd.DataFrame({

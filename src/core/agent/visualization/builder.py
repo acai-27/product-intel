@@ -1,4 +1,4 @@
-"""
+﻿"""
 Deterministic Chart.js config builders from tool result payloads.
 """
 
@@ -66,14 +66,8 @@ def build_from_step(step_id: str, tool_id: str, data: dict[str, Any]) -> list[di
         "forecast_predict": [_build_forecast],
         "forecast_explain_drivers": [_build_shap],
         "nl2sql_query": [_build_nl2sql],
-        "analytics_trend": [_build_trend],
         "simulate_scenario": [_build_simulation],
-        "sensitivity_estimate": [_build_sensitivity],
-        "analysis_compare": [_build_compare],
         "anomaly_rank_products": [_build_anomaly_rank],
-        "analytics_channel": [_build_channel],
-        "analytics_kpi": [_build_kpi_snapshot],
-        "optimize_parameters": [_build_optimization],
     }
     charts: list[dict[str, Any]] = []
     for fn in builders.get(tool_id, []):
@@ -97,7 +91,7 @@ def _build_forecast(step_id: str, tool_id: str, data: dict[str, Any]) -> list[di
     return [_chart(
         viz_id=f"{step_id}_forecast",
         title="Forecast Trajectory",
-        subtitle=f"Product {pid} · {data.get('horizon_days', 30)}-day horizon" if pid else "",
+        subtitle=f"Product {pid} Â· {data.get('horizon_days', 30)}-day horizon" if pid else "",
         chart_type="line",
         labels=labels,
         datasets=datasets,
@@ -123,7 +117,7 @@ def _build_shap(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[s
     return [_chart(
         viz_id=f"{step_id}_shap",
         title="Driver Impact (SHAP)",
-        subtitle=f"{data.get('target_metric', 'revenue').title()} · {data.get('date', '')}",
+        subtitle=f"{data.get('target_metric', 'revenue').title()} Â· {data.get('date', '')}",
         chart_type="bar",
         index_axis="y",
         labels=labels,
@@ -168,25 +162,6 @@ def _build_nl2sql(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict
         chart_type=chart_type,
         labels=labels,
         datasets=datasets,
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
-def _build_trend(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    history = data.get("history") or data.get("daily_values") or []
-    if not history:
-        return []
-    labels = [str(h.get("date", h.get("label", i)))[:10] for i, h in enumerate(history)]
-    values = [float(h.get("value", h.get("revenue", 0)) or 0) for h in history]
-    metric = str(data.get("metric", "revenue")).replace("_", " ").title()
-    return [_chart(
-        viz_id=f"{step_id}_trend",
-        title=f"{metric} Trend",
-        subtitle=f"Direction: {data.get('direction', 'n/a')} · Growth {data.get('growth_rate_pct', 0)}%",
-        chart_type="line",
-        labels=labels,
-        datasets=[_dataset(metric, values, 0, fill=True)],
         source_step=step_id,
         source_tool=tool_id,
     )]
@@ -239,52 +214,6 @@ def _build_simulation(step_id: str, tool_id: str, data: dict[str, Any]) -> list[
     return charts
 
 
-def _build_sensitivity(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    levers = []
-    for key, val in data.items():
-        if isinstance(val, dict) and "elasticity_score" in val:
-            levers.append((key.replace("_", " ").title(), float(val.get("elasticity_score", 0) or 0)))
-    if not levers:
-        return []
-    levers.sort(key=lambda x: abs(x[1]), reverse=True)
-    labels, scores = zip(*levers[:10])
-    return [_chart(
-        viz_id=f"{step_id}_sensitivity",
-        title="Lever Sensitivity",
-        subtitle="Elasticity scores by driver",
-        chart_type="bar",
-        index_axis="y",
-        labels=list(labels),
-        datasets=[_dataset("Elasticity", list(scores), 0)],
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
-def _build_compare(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    comp = data.get("metrics_comparison") or data.get("comparison") or {}
-    if not comp:
-        return []
-    labels, p1, p2 = [], [], []
-    for metric, vals in comp.items():
-        if not isinstance(vals, dict):
-            continue
-        labels.append(metric.replace("_", " ").title())
-        p1.append(float(vals.get("period1_sum", vals.get("period1", 0)) or 0))
-        p2.append(float(vals.get("period2_sum", vals.get("period2", 0)) or 0))
-    if not labels:
-        return []
-    return [_chart(
-        viz_id=f"{step_id}_compare",
-        title="Period Comparison",
-        chart_type="bar",
-        labels=labels,
-        datasets=[_dataset("Period 1", p1, 0), _dataset("Period 2", p2, 1)],
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
 def _build_anomaly_rank(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
     items = (
         data.get("top_10_critical_products")
@@ -308,59 +237,6 @@ def _build_anomaly_rank(step_id: str, tool_id: str, data: dict[str, Any]) -> lis
     )]
 
 
-def _build_channel(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = data.get("channel_breakdown") or data.get("channels") or []
-    if not rows:
-        return []
-    labels = [str(r.get("channel", r.get("name", ""))) for r in rows]
-    values = [float(r.get("revenue", r.get("value", 0)) or 0) for r in rows]
-    return [_chart(
-        viz_id=f"{step_id}_channel",
-        title="Channel Mix",
-        chart_type="doughnut",
-        labels=labels,
-        datasets=[{"label": "Revenue", "data": values, "backgroundColor": _PALETTE[: len(labels)], "borderWidth": 0}],
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
-def _build_kpi_snapshot(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    skip = {"product_id", "category", "start_date", "end_date", "table"}
-    pairs = [(k.replace("_", " ").title(), float(v)) for k, v in data.items()
-             if k not in skip and _is_numeric(v)]
-    if len(pairs) < 2:
-        return []
-    pairs = pairs[:8]
-    labels, values = zip(*pairs)
-    return [_chart(
-        viz_id=f"{step_id}_kpi",
-        title="KPI Snapshot",
-        chart_type="bar",
-        labels=list(labels),
-        datasets=[_dataset("Value", list(values), 0)],
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
-def _build_optimization(step_id: str, tool_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
-    baseline = float(data.get("baseline_forecast_sum", 0) or 0)
-    optimized = float(data.get("optimized_forecast_sum", 0) or 0)
-    if baseline == 0 and optimized == 0:
-        return []
-    return [_chart(
-        viz_id=f"{step_id}_optimize",
-        title="Optimization Lift",
-        subtitle=f"+{data.get('percentage_improvement', 0)}% improvement",
-        chart_type="bar",
-        labels=["Baseline", "Optimized"],
-        datasets=[_dataset("Forecast sum", [baseline, optimized], 0)],
-        source_step=step_id,
-        source_tool=tool_id,
-    )]
-
-
 def _is_numeric(val: Any) -> bool:
     if val is None:
         return False
@@ -373,3 +249,4 @@ def _looks_temporal(col: str, labels: list[str]) -> bool:
     if "date" in col.lower():
         return True
     return bool(labels and re.match(r"\d{4}-\d{2}", str(labels[0])))
+

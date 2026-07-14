@@ -317,8 +317,6 @@ def _normalize_steps(
                         "anomaly_detect",
                         "forecast_predict",
                         "simulate_scenario",
-                        "optimize_parameters",
-                        "sensitivity_estimate",
                     )
                     needs_wire = (
                         always_wire
@@ -554,7 +552,7 @@ def _fill_required_params(
                 for prior in reversed(dag[:idx]):
                     prior_id = str(prior.get("step_id"))
                     prior_tool = prior.get("tool_id", "")
-                    if prior_tool in ("forecast_predict", "analytics_trend", "anomaly_rank_products"):
+                    if prior_tool in ("forecast_predict", "anomaly_rank_products"):
                         input_from[param_name] = {"step": prior_id, "field": param_name}
                         if prior_id not in depends_on:
                             depends_on.append(prior_id)
@@ -585,8 +583,6 @@ def _step_can_supply_field(
         return _nl2sql_supplies_field(source_step, field, user_query)
     if tool_id == "forecast_predict":
         return field in ("product_id", "date", "target_date")
-    if tool_id == "analytics_trend":
-        return field in ("date", "target_date")
     if tool_id == "anomaly_rank_products":
         return field in ("product_id", "date", "target_date")
     if tool_id == "anomaly_detect":

@@ -1,5 +1,5 @@
 import argparse
-from anomaly_detect.service import detect_anomalies
+from src.core.new_anomaly.service import detect_anomalies
 
 def main():
     parser = argparse.ArgumentParser(description="Run Anomaly Detection POC locally.")

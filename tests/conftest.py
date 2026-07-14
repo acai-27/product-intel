@@ -7,6 +7,9 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Set dummy env vars for tests so database checks don't crash
+os.environ["NEON_URL"] = "sqlite:///data/test.db"
+
 @pytest.fixture(scope="module")
 def client():
     from src.api.main import app

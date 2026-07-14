@@ -19,7 +19,7 @@ export default function WorkspacePage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'assistant',
-      text: "Welcome back — grab a metaphorical coffee and ask me anything about your business. I can explain dips, run simulations, or pull insights from your history.",
+      text: "Welcome back — grab a metaphorical coffee and ask me anything about your business. I can explain dips, run simulations, scan anomalies, or look up product performance.",
     },
   ]);
 
@@ -179,7 +179,7 @@ export default function WorkspacePage() {
         const newMsgs = [...prev];
         newMsgs[newMsgs.length - 1] = {
           sender: 'assistant',
-          text: 'Could not reach the decision engine. Check your connection and try again.',
+          text: 'Could not reach the analytics assistant. Check your connection and try again.',
         };
         return newMsgs;
       });
@@ -203,7 +203,7 @@ export default function WorkspacePage() {
           </div>
           <h1>Ask anything — stay awhile</h1>
           <p className="pin-hero-desc">
-            Your analyst is here for root-cause dives, what-if runs, and plain-language summaries. No jargon required.
+            Your analyst is here for forecasts, anomaly scans, what-if runs, and plain-language summaries. No jargon required.
           </p>
         </div>
         <div className="pin-hero-badge">

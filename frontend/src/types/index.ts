@@ -67,18 +67,6 @@ export interface PredictionResponse {
   data: TrendData;
 }
 
-export interface RecommendationResponse {
-  report: any;
-  details: any;
-}
-
-export interface ExperimentResponse {
-  experiments: any[];
-  reports: Record<number, any>;
-  search: any;
-  insights: any;
-}
-
 export interface ChatResponse {
   response: string;
   routed_to: string;

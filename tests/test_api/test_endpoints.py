@@ -123,59 +123,6 @@ def test_scenario_endpoint(client):
     assert data["impact"] in ["positive", "negative", "neutral"]
     assert len(data["daily_comparison"]) == 10
 
-def test_optimization_endpoint(client):
-    payload = {
-        "target_metric": "revenue",
-        "product_id": "P001",
-        "horizon_days": 10,
-        "max_discount_pct": 0.25,
-        "max_marketing_budget": 200.0
-    }
-    response = client.post("/api/v1/optimization/maximize", json=payload)
-    print("\nDEBUG test_optimization_endpoint:")
-    print("STATUS CODE:", response.status_code)
-    print("JSON:", response.json())
-    assert response.status_code == 200
-    
-    data = response.json()
-    assert data["target_metric"] == "revenue"
-    assert data["product_id"] == "P001"
-    assert data["horizon_days"] == 10
-    assert "baseline_forecast_sum" in data
-    assert "optimized_forecast_sum" in data
-    assert "percentage_improvement" in data
-    assert "optimal_parameters" in data
-    assert "baseline_parameters" in data
-
-def test_analysis_compare_endpoint(client):
-    payload = {
-        "period1_start": "2025-01-01",
-        "period1_end": "2025-01-10",
-        "period2_start": "2025-01-11",
-        "period2_end": "2025-01-20",
-        "product_id": "P001"
-    }
-    response = client.post("/api/v1/analysis/compare", json=payload)
-    assert response.status_code == 200
-    
-    data = response.json()
-    assert "period1_range" in data
-    assert "period2_range" in data
-    assert "metrics_comparison" in data
-    assert "drivers_summary" in data
-
-def test_analysis_declining_endpoint(client):
-    payload = {
-        "lookback_days": 30,
-        "metric": "revenue"
-    }
-    response = client.post("/api/v1/analysis/declining", json=payload)
-    assert response.status_code == 200
-    
-    data = response.json()
-    assert "declining_products" in data
-    assert isinstance(data["declining_products"], list)
-
 def test_scenario_evaluate_endpoint(client):
     payload = {
         "product_id": "P001",
@@ -263,8 +210,9 @@ def test_anomaly_detect_auto_date(client):
     assert response.status_code == 200
     data = response.json()
     assert data["product_id"] == "P001"
-    assert data["target_date"] is not None
-    assert "severity_score" in data
+    assert "summary" in data
+    assert "graph_data" in data
+    assert "anomalies" in data
 
 def test_anomaly_scan_endpoint(client):
     # Scan the last 14 days

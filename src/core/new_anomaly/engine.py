@@ -8,7 +8,7 @@ from .service import detect_anomalies
 logger = logging.getLogger(__name__)
 
 class AnomalyDetectionEngineV2:
-    def __init__(self, data_path: str = "src/core/history.zip"):
+    def __init__(self, data_path: str = "temporal_dataset.csv"):
         self.data_path = data_path
         self._catalog = None
 
@@ -35,15 +35,15 @@ class AnomalyDetectionEngineV2:
             "summary": {
                 "total_points": res.summary.total_points,
                 "anomaly_count": res.summary.anomaly_count,
-                "positive_opportunities": res.summary.positive_opportunities,
-                "negative_risks": res.summary.negative_risks,
+                "positive_opportunities": res.summary.positive_anomalies,
+                "negative_risks": res.summary.negative_anomalies,
             },
             "graph_data": [
                 {
                     "date": pt.date,
                     "value": pt.value,
                     "is_anomaly": pt.is_anomaly,
-                    "classification": pt.classification,
+                    "classification": pt.status,
                     "deviation_pct": pt.deviation_pct or 0.0
                 } for pt in res.graph_data
             ],
@@ -52,14 +52,14 @@ class AnomalyDetectionEngineV2:
                     "date": a.date,
                     "value": a.value,
                     "is_anomaly": a.is_anomaly,
-                    "classification": a.classification,
+                    "classification": a.status,
                     "deviation_pct": a.deviation_pct or 0.0
                 } for a in res.anomalies
             ]
         }
 
     def scan_anomalies(self, product_id: str, lookback_days: int = 14, kpi: str = "revenue") -> Dict[str, Any]:
-        date_range = f"{lookback_days} Days"
+        date_range = "30 Days" if lookback_days <= 30 else "90 Days" if lookback_days <= 90 else "180 Days"
         res = detect_anomalies(self.data_path, product_id, kpi, date_range)
         
         # AnomalyScanResponse expects anomalous_dates
@@ -69,7 +69,7 @@ class AnomalyDetectionEngineV2:
                 "date": anomaly.date,
                 "percentage_change": anomaly.deviation_pct or 0.0,
                 "severity_score": anomaly.score * 100,  # Normalize or just pass the score
-                "status": anomaly.classification or "Risk",
+                "status": anomaly.status or "Risk",
                 "details": anomaly.anomaly_type
             })
             
@@ -95,7 +95,7 @@ class AnomalyDetectionEngineV2:
                 criticality = 0.0
                 risk_count = 0
                 for anomaly in res.anomalies:
-                    if anomaly.classification == "Risk":
+                    if anomaly.status in {"Risk", "Attention Required"}:
                         criticality += abs(anomaly.deviation_pct or 0.0)
                         risk_count += 1
                         

@@ -35,7 +35,7 @@ If the query mentions a date or timeframe, resolve it to an absolute date string
 1. Each step must reference a valid tool_id from the AVAILABLE TOOLS list.
 2. Steps execute in order. A step can depend on previous steps via "depends_on" (e.g. ["s1"]).
 3. "params" must only contain keys that match the tool's input_schema.
-4. A DAG can have multiple steps to form a logical analytical chain. Keep the DAG minimal when a single factual lookup is enough, but use multiple steps whenever the query requires lookup -> analysis, ranking -> explanation, forecast -> decision, anomaly -> explanation, or any other chained reasoning.
+4. A DAG can have multiple steps to form a logical analytical chain. Keep the DAG minimal when a single factual lookup is enough, but use multiple steps whenever the query requires lookup -> forecast, lookup -> explanation, ranking -> anomaly scan, anomaly -> explanation, or any other supported chained reasoning.
 5. Make sure the input and output flow is properly taken into account. The DAG must be acyclic. No step can depend on a later step.
 6. Never invent placeholder values. Do not use "P001" unless the user explicitly said P001 or the data context proves P001 is the only valid entity.
 7. If a later step needs a value discovered by an earlier step, use "input_from" instead of putting that value in "params".

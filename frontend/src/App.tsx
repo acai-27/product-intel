@@ -7,9 +7,7 @@ import './App.css';
 
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const WorkspacePage = React.lazy(() => import('./pages/WorkspacePage'));
-const ExperimentsPage = React.lazy(() => import('./pages/ExperimentsPage'));
 const PredictionsPage = React.lazy(() => import('./pages/PredictionsPage'));
-const RecommendationsPage = React.lazy(() => import('./pages/RecommendationsPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 
 const PageLoader = () => (
@@ -27,9 +25,7 @@ function App() {
             <Route path="/" element={<MainLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="workspace" element={<WorkspacePage />} />
-              <Route path="experiments" element={<ExperimentsPage />} />
               <Route path="predictions" element={<PredictionsPage />} />
-              <Route path="recommendations" element={<RecommendationsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>

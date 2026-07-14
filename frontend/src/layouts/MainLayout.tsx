@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   TrendingUp,
-  AlertTriangle,
-  BookOpen,
   MessageSquare,
   Settings,
   Menu,
@@ -20,8 +18,6 @@ import { ThreeDInteractiveBackground } from '../components/ThreeDInteractiveBack
 const NAV_ITEMS = [
   { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard', hint: 'Your board' },
   { to: '/predictions', icon: TrendingUp, label: 'Analytics', hint: 'Trends' },
-  { to: '/recommendations', icon: AlertTriangle, label: 'Anomalies', hint: 'Alerts' },
-  { to: '/experiments', icon: BookOpen, label: 'Repository', hint: 'Archive' },
   { to: '/workspace', icon: MessageSquare, label: 'AI Assistant', hint: 'Chat' },
   { to: '/settings', icon: Settings, label: 'Settings', hint: 'Preferences' },
 ];
@@ -29,8 +25,6 @@ const NAV_ITEMS = [
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
-  const isAnomaliesPage = location.pathname === '/recommendations';
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -96,7 +90,7 @@ export const MainLayout: React.FC = () => {
           </div>
         </aside>
 
-        <main className={`main-content ${isAnomaliesPage ? '' : 'page-cozy'}`}>
+        <main className="main-content page-cozy">
           <div className="page-enter">
             <Outlet />
           </div>

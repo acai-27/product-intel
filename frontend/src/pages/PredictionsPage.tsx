@@ -40,24 +40,24 @@ export default function PredictionsPage() {
 
   const trendChartConfig = trendData?.history
     ? {
-        labels: trendData.history.map((pt) => pt.date),
-        datasets: [
-          {
-            label: trendMetric.replace('_', ' '),
-            data: trendData.history.map((pt) => pt.value),
-            borderColor: '#7A7268',
-            backgroundColor: 'rgba(122, 114, 104, 0.12)',
-            borderWidth: 2.5,
-            tension: 0.45,
-            fill: true,
-            pointRadius: trendData.history.length > 30 ? 0 : 4,
-            pointHoverRadius: 6,
-            pointBackgroundColor: '#7A7268',
-            pointBorderColor: isDark ? themeConfig.palette.cashmere : themeConfig.palette.cashmereLightMode,
-            pointBorderWidth: 2,
-          },
-        ],
-      }
+      labels: trendData.history.map((pt) => pt.date),
+      datasets: [
+        {
+          label: trendMetric.replace('_', ' '),
+          data: trendData.history.map((pt) => pt.value),
+          borderColor: '#7A7268',
+          backgroundColor: 'rgba(122, 114, 104, 0.12)',
+          borderWidth: 2.5,
+          tension: 0.45,
+          fill: true,
+          pointRadius: trendData.history.length > 30 ? 0 : 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#7A7268',
+          pointBorderColor: isDark ? themeConfig.palette.cashmere : themeConfig.palette.cashmereLightMode,
+          pointBorderWidth: 2,
+        },
+      ],
+    }
     : null;
 
   const tableData =

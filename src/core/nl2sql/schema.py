@@ -10,9 +10,7 @@ from typing import Any
 ALLOWED_TABLES: frozenset[str] = frozenset({
     "product_performance",
     "events",
-    "experiments",
     "snapshots",
-    "reports",
     "knowledge_base",
 })
 
@@ -60,22 +58,7 @@ TABLE_SCHEMAS: dict[str, dict[str, Any]] = {
             "confidence": "FLOAT",
         },
     },
-    "experiments": {
-        "description": "A/B tests and business experiments with before/after metrics.",
-        "columns": {
-            "experiment_id": "VARCHAR — unique experiment ID",
-            "type": "VARCHAR — ab_test, pricing, funnel, etc.",
-            "product_ids": "VARCHAR — comma-separated product IDs",
-            "category": "VARCHAR",
-            "brand": "VARCHAR",
-            "start_date": "DATE",
-            "end_date": "DATE",
-            "change_summary": "TEXT",
-            "improvement_pct": "FLOAT",
-            "outcome": "VARCHAR — positive, negative, neutral",
-            "confidence_score": "FLOAT",
-        },
-    },
+
     "snapshots": {
         "description": "Daily aggregated business snapshots across all products.",
         "columns": {
@@ -92,13 +75,7 @@ TABLE_SCHEMAS: dict[str, dict[str, Any]] = {
             "summary": "TEXT",
         },
     },
-    "reports": {
-        "description": "Human-readable and structured reports linked to experiments.",
-        "columns": {
-            "experiment_id": "INTEGER — FK to experiments.id",
-            "human_readable_text": "TEXT",
-        },
-    },
+
     "knowledge_base": {
         "description": "Synthesized business rules and patterns from past analyses.",
         "columns": {

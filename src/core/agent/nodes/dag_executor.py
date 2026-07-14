@@ -28,7 +28,7 @@ _DATE_PARAM_KEYS = {
     "period2_end",
 }
 
-_QUERY_PARAM_TOOLS = {"nl2sql_query", "decision_ask", "repository_search", "repository_extract"}
+_QUERY_PARAM_TOOLS = {"nl2sql_query"}
 
 
 def execute_dag(state: AgentState, engines: dict[str, Any]) -> dict[str, Any]:

@@ -1,22 +1,17 @@
 """
-Response Validator Node.
+Response validator for the final scoped LangGraph pipeline.
 
-Runs between the executor and synthesizer to verify that the executed DAG steps
-produced complete, non-empty, and relevant results. Deterministic checks handle
-plan coverage and NL2SQL alignment first; embeddings are only a fallback signal.
+The validator performs deterministic completeness and relevance checks without
+removed engines or embedding-based retrieval.
 """
 
 from typing import Any
 import re
 
-import numpy as np
-
 from src.core.agent.state import AgentState
 from src.utils.logger import setup_logger
 
 logger = setup_logger("validator")
-
-_encoder = None
 
 _METRIC_TERMS: dict[str, tuple[str, ...]] = {
     "profit": ("profit", "profitable", "margin"),
@@ -30,24 +25,20 @@ _METRIC_TERMS: dict[str, tuple[str, ...]] = {
 
 _COMPLEX_QUERY_TOOL_HINTS: tuple[tuple[re.Pattern[str], tuple[str, ...], str], ...] = (
     (re.compile(r"\b(forecast|predict|projection|next|future)\b", re.I), ("forecast_predict",), "forecasting"),
-    (re.compile(r"\b(why|explain|driver|cause|root cause|diagnos)\b", re.I), ("forecast_explain_drivers", "decision_ask"), "explanation/diagnosis"),
-    (re.compile(r"\b(should we|recommend|recommendation|decision|strategy|actionable)\b", re.I), ("decision_ask",), "decision recommendation"),
-    (re.compile(r"\b(what if|what-if|simulate|simulation|scenario)\b", re.I), ("simulate_scenario", "decision_ask"), "scenario simulation"),
-    (re.compile(r"\b(optimi[sz]e|maximi[sz]e|minimi[sz]e|best parameter|best discount|best price)\b", re.I), ("optimize_parameters",), "optimization"),
-    (re.compile(r"\b(anomal|outlier|unusual|spike|drop)\b", re.I), ("anomaly_detect", "anomaly_rank_products", "forecast_explain_drivers", "decision_ask"), "anomaly/diagnosis"),
+    (re.compile(r"\b(why|explain|driver|cause|diagnos)\b", re.I), ("forecast_explain_drivers",), "explanation/diagnosis"),
+    (re.compile(r"\b(what if|what-if|simulate|simulation|scenario)\b", re.I), ("simulate_scenario",), "scenario simulation"),
+    (re.compile(r"\b(anomal|outlier|unusual|spike|drop)\b", re.I), ("anomaly_detect", "anomaly_rank_products", "forecast_explain_drivers"), "anomaly/diagnosis"),
 )
 
 _RANKING_TERMS = re.compile(r"\b(top|highest|lowest|most|least|biggest|smallest|best|worst)\b", re.I)
 _AGGREGATE_TERMS = re.compile(r"\b(total|sum|average|avg|count|how many)\b", re.I)
 
-
-def _get_encoder() -> Any:
-    global _encoder
-    if _encoder is None:
-        from src.core.history.embeddings.encoder import SentenceTransformerEncoder
-
-        _encoder = SentenceTransformerEncoder()
-    return _encoder
+_ANALYTICAL_RESULT_KEYS = frozenset({
+    "daily_details", "positive_drivers", "negative_drivers", "kpis",
+    "prediction_value", "explanation_summary", "graph_data", "anomalies",
+    "top_10_critical_products", "forecast_total_revenue", "forecast_total_profit",
+    "forecast_total_orders",
+})
 
 
 def _mentioned_metrics(query: str) -> list[str]:
@@ -121,13 +112,6 @@ def _validate_single_nl2sql_result(query: str, result: Any) -> tuple[bool, str]:
     return True, "Validation passed."
 
 
-_ANALYTICAL_RESULT_KEYS = frozenset({
-    "daily_details", "positive_drivers", "negative_drivers", "kpis",
-    "metrics_comparison", "ranked_products", "prediction_value",
-    "explanation_summary", "optimized_forecast_sum", "baseline_forecast_sum",
-})
-
-
 def _has_analytical_payload(result: Any) -> bool:
     if not isinstance(result, dict) or result.get("error"):
         return False
@@ -138,7 +122,7 @@ def _has_analytical_payload(result: Any) -> bool:
 
 
 def validate_results(state: AgentState) -> dict[str, Any]:
-    """Validate step results for completeness, non-emptiness, and relevance."""
+    """Validate step results for completeness, non-emptiness, and basic tool/query fit."""
     plan = state.get("execution_plan", [])
     step_results = state.get("step_results", {})
     query = state.get("user_query", "")
@@ -153,10 +137,7 @@ def validate_results(state: AgentState) -> dict[str, Any]:
         step_id = plan[0].get("step_id")
         result = step_results.get(step_id)
         if result is None:
-            return {
-                "validation_passed": False,
-                "validation_notes": f"Step {step_id} did not produce a result.",
-            }
+            return {"validation_passed": False, "validation_notes": f"Step {step_id} did not produce a result."}
 
         nl2sql_passed, nl2sql_notes = _validate_single_nl2sql_result(query, result)
         if not nl2sql_passed:
@@ -184,7 +165,6 @@ def validate_results(state: AgentState) -> dict[str, Any]:
         notes.append(f"Incomplete execution: {executed_count}/{len(plan)} steps ran.")
 
     has_valid_data = False
-    has_structured_lookup = False
     analytical_successes = 0
     step_errors = 0
     for step_id in planned_step_ids:
@@ -196,65 +176,23 @@ def validate_results(state: AgentState) -> dict[str, Any]:
             notes.append(f"Step {step_id} failed: {result['error']}")
         elif "rows" in result and len(result["rows"]) == 0:
             notes.append(f"Step {step_id} executed but found 0 records.")
-        elif "rows" in result and "columns" in result:
-            has_structured_lookup = True
             has_valid_data = True
+        elif _has_analytical_payload(result):
+            has_valid_data = True
+            analytical_successes += 1
         else:
             has_valid_data = True
-            if _has_analytical_payload(result):
-                analytical_successes += 1
 
     if not has_valid_data:
         passed = False
         notes.append("No valid data was produced by any step.")
-    elif step_errors > 0:
-        if analytical_successes > 0:
-            notes.append(
-                f"{step_errors} step(s) failed but {analytical_successes} analytical step(s) "
-                "produced usable data — continuing with partial results."
-            )
-        else:
-            passed = False
-
-    if has_valid_data and query and not has_structured_lookup and analytical_successes == 0:
-        summary_parts = []
-        for step_id in planned_step_ids:
-            result = step_results.get(step_id)
-            if isinstance(result, dict) and "error" not in result:
-                keys_str = " ".join(result.keys())
-                summary_parts.append(f"Result {step_id} contains {keys_str}")
-
-        results_summary = " | ".join(summary_parts)
-        try:
-            encoder = _get_encoder()
-            query_emb = np.array(encoder.encode(query))
-            res_emb = np.array(encoder.encode(results_summary))
-
-            q_norm = np.linalg.norm(query_emb)
-            r_norm = np.linalg.norm(res_emb)
-            if q_norm > 0 and r_norm > 0:
-                query_emb = query_emb / q_norm
-                res_emb = res_emb / r_norm
-
-                similarity = float(np.dot(query_emb, res_emb))
-                logger.info(f"Validator semantic relevance score: {similarity:.3f}")
-
-                if similarity < 0.18:
-                    passed = False
-                    notes.append(f"Low relevance score ({similarity:.3f}): The executed tools may not match the query.")
-        except Exception as e:
-            logger.warning(f"Semantic relevance validation skipped: {e}")
+    elif step_errors > 0 and analytical_successes == 0:
+        passed = False
 
     final_notes = "\n".join(notes) if notes else "Validation passed."
-
     if not passed:
         logger.warning(f"Validation failed:\n{final_notes}")
     else:
         logger.info("Validation passed.")
 
-    logger.info(f"--- VALIDATION RESULT ---\nPassed: {passed}\nNotes: {final_notes}\n-------------------------")
-
-    return {
-        "validation_passed": passed,
-        "validation_notes": final_notes,
-    }
+    return {"validation_passed": passed, "validation_notes": final_notes}

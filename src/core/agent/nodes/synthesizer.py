@@ -34,20 +34,20 @@ _FAST_INTENT_COPY: dict[str, str] = {
     "greeting": (
         "Hello! I'm your AI-powered Business Analytics Assistant. "
         "I can help you with forecasting, trend analysis, anomaly detection, "
-        "what-if simulations, and strategic recommendations. How can I assist you today?"
+        "what-if simulations, and product data lookup. How can I assist you today?"
     ),
     "system_status": (
         "The system is online and healthy. All analytics engines — forecasting, anomaly detection, "
-        "decision intelligence, and NL2SQL — are operational."
+        "scenario simulation, forecast explanation, and NL2SQL — are operational."
     ),
     "guardrail_block": (
         "I'm sorry, but I can only help with business analytics questions. "
-        "Try asking about forecasts, trends, anomalies, or strategic recommendations."
+        "Try asking about forecasts, explanations, simulations, anomalies, or product data lookup."
     ),
     "clarification": (
         "Could you please provide more details? For example, you can ask me to "
         "forecast revenue, explain why a metric changed, simulate a what-if scenario, "
-        "or recommend an optimal pricing strategy."
+        "scan for anomalies, or query product performance data."
     ),
 }
 
@@ -114,16 +114,7 @@ def synthesize_analytical_response_stream(
         step_data = raw_data.get(step_id, raw_data) if step_id else raw_data
         yield from _stream_nl2sql_synthesis(state.get("user_query", ""), step_data, notes, llm_client)
         return
-
-    if route == "decision_ask":
-        for val in raw_data.values():
-            if isinstance(val, dict) and val.get("explanation"):
-                resp = val["explanation"]
-                if notes and "passed" not in notes.lower():
-                    resp += f"\n\n> **Note:** {notes}"
-                yield from _stream_text(resp)
-                return
-
+
     if route == "meta_query":
         yield from _stream_meta_query(state, llm_client)
         return
@@ -218,7 +209,7 @@ def _stream_meta_query(state: AgentState, llm_client: LLMClient) -> Iterator[str
         logger.error(f"Meta query synthesis failed: {e}")
         yield from _stream_text(
             "You can ask me to forecast revenue, explain metric drops, simulate business scenarios, "
-            "detect anomalies, query product data, or recommend pricing and marketing strategies."
+            "detect anomalies, or query product performance data."
         )
 
 

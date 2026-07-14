@@ -41,12 +41,12 @@ class TestValidateSQL:
         with pytest.raises(SQLValidationError, match="Multiple"):
             validate_sql("SELECT 1; SELECT 2 FROM product_performance")
 
-    def test_accepts_join(self) -> None:
-        sql = validate_sql(
-            "SELECT e.experiment_id, r.human_readable_text "
-            "FROM experiments e JOIN reports r ON r.experiment_id = e.id"
-        )
-        assert "LIMIT 100" in sql.upper()
+    def test_rejects_experiment_report_join(self) -> None:
+        with pytest.raises(SQLValidationError, match="disallowed"):
+            validate_sql(
+                "SELECT e.experiment_id, r.human_readable_text "
+                "FROM experiments e JOIN reports r ON r.experiment_id = e.id"
+            )
 
     def test_accepts_events_table(self) -> None:
         sql = validate_sql(

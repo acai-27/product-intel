@@ -30,9 +30,7 @@ COLUMNS = [
 QUERYABLE_TABLE_DESCRIPTIONS = {
     "product_performance": "Daily product KPIs and business drivers. Primary table for revenue, profit, orders, marketing, inventory.",
     "events": "Business events such as anomalies, stockouts, and campaign changes.",
-    "experiments": "A/B tests and business experiments with before/after metrics.",
     "snapshots": "Daily aggregated business snapshots across all products.",
-    "reports": "Human-readable and structured reports linked to experiments.",
     "knowledge_base": "Synthesized business rules and patterns from past analyses.",
 }
 QUERYABLE_TABLES = sorted(QUERYABLE_TABLE_DESCRIPTIONS)
