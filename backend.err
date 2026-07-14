@@ -1,18 +1,0 @@
-INFO:     Will watch for changes in these directories: ['C:\\Users\\Relanto\\product-intel']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [21064] using WatchFiles
-INFO:     Started server process [24520]
-INFO:     Waiting for application startup.
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 2941.53it/s]
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'src\core\analytics\channel.py', 'src\core\decision\validation\validator.py', 'src\core\analytics\marketing.py', 'src\api\routers\scenario.py', 'src\utils\seed_db.py', 'src\core\analytics\campaign.py', 'src\core\history\storage\models.py', 'src\api\routers\history.py', 'src\core\agent\planner.py', 'src\core\analytics\seasonality.py', 'src\core\analytics\pricing.py', 'src\core\analytics\engine.py', 'src\core\analytics\customer.py', 'src\api\routers\forecast.py', 'src\core\analytics\kpi.py', 'src\core\analytics\utils.py', 'src\api\routers\analysis.py', 'src\core\analytics\inventory.py', 'src\api\routers\optimization.py', 'src\core\analytics\benchmark.py', 'src\core\anomaly\engine.py', 'src\core\anomaly\multivariate.py', 'src\core\history\storage\database.py', 'src\core\analytics\trend.py', 'src\core\decision\manager.py', 'src\api\dependencies.py', 'src\api\routers\explanation.py', 'src\api\routers\sensitivity.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [24520]
-INFO:     Started server process [44504]
-INFO:     Waiting for application startup.
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 3916.04it/s]
-INFO:     Application startup complete.
