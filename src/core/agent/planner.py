@@ -10,12 +10,49 @@ import pandas as pd
 from src.core.explainer import PredictionExplainer
 from src.core.forecaster import ProductForecaster
 from src.core.simulator import ScenarioSimulator
+from src.core.nl2sql.dates import resolve_date, get_reference_date
 from src.utils.logger import setup_logger
 
 logger = setup_logger("planner_agent")
-# --- Define these at the very top of the file, outside any class ---
-_PRODUCT_ID_PATTERN = re.compile(r"\b[pP]\d{3,4}\b")
-_DATE_LITERAL = re.compile(r"(\d{4}-\d{2}-\d{2})")
+
+# --- Entity-extraction patterns used only by the legacy rule-based fallback
+# (_fallback_rule_based_router / execute_route below). Kept local to this
+# file rather than importing dag_planner's private _PRODUCT_ID_PATTERN, to
+# avoid coupling this last-resort path to the primary pipeline's internals.
+_FALLBACK_PRODUCT_ID_RE = re.compile(r"\bP\d+\b", re.I)
+_FALLBACK_METRIC_RE = re.compile(
+    r"\b(revenue|profit|orders?|conversion(?:\s*rate)?|retention(?:\s*rate)?)\b", re.I
+)
+_FALLBACK_HORIZON_RE = re.compile(r"(\d+)\s*(day|week|month)s?\b", re.I)
+_FALLBACK_PCT_RE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%")
+_FALLBACK_NUM_RE = re.compile(r"([+-]?\d+(?:\.\d+)?)")
+_FALLBACK_NEGATIVE_RE = re.compile(r"\b(decrease|reduce|cut|lower|drop|down)\b", re.I)
+_FALLBACK_METRIC_MAP = {
+    "revenue": "revenue",
+    "profit": "profit",
+    "order": "orders",
+    "orders": "orders",
+    "conversion": "conversion_rate",
+    "conversion rate": "conversion_rate",
+    "retention": "retention_rate",
+    "retention rate": "retention_rate",
+}
+_FALLBACK_DRIVER_DEFAULTS = {"discount": "5%", "shipping": "20", "marketing": "10%"}
+
+# Route classification, in explicit priority order (most specific intent
+# first): a "why" question signals root-cause intent, "what-if" signals a
+# scenario test, and a bare forecast request is the safest generic default.
+# Using \b word-boundary regex here (not plain substring `in` checks) avoids
+# false positives like "why" matching inside "highway", and scoring by
+# keyword-hit count with a stated priority replaces what used to be an
+# unstated, accidental if/elif ordering.
+_FALLBACK_ROUTE_PATTERNS = {
+    "forecast_explain_drivers": re.compile(r"\b(why|explain(?:ing|ed|s)?|driver|drivers|cause|caused|reason)\b", re.I),
+    "simulate_scenario": re.compile(r"\b(what[\s-]?if|scenario|simulate|simulation)\b", re.I),
+    "forecast_predict": re.compile(r"\b(forecast|predict|project|projection|trend|outlook)\b", re.I),
+}
+_FALLBACK_ROUTE_PRIORITY = list(_FALLBACK_ROUTE_PATTERNS.keys())
+
 
 def _stream_text_and_visualizations(result: dict[str, Any], llm_client: Any):
     """Stream text synthesis and visualization events in parallel."""
@@ -221,47 +258,96 @@ class LLMPlannerAgent:
             logger.error(f"Fallback execution failed for route {route}: {e}")
             return {"error": str(e)}
 
+    def _extract_magnitude_near(self, q: str, driver: str, as_percent: bool) -> str:
+        """
+        Look for a signed/unsigned number near the driver keyword (e.g. finds
+        "15" in "increase discount by 15%") and infer direction from nearby
+        words. Falls back to the same fixed defaults the old hardcoded
+        version used, so behavior degrades gracefully rather than guessing
+        wildly when no number is present.
+        """
+        idx = q.find(driver)
+        window = q[max(0, idx - 25): idx + 35]
+
+        match = _FALLBACK_PCT_RE.search(window) or _FALLBACK_NUM_RE.search(window)
+        magnitude = _FALLBACK_DRIVER_DEFAULTS.get(driver, "5%")
+        if match:
+            raw = match.group(1).lstrip("+-")
+            magnitude = f"{raw}%" if as_percent else raw
+
+        sign = "-" if _FALLBACK_NEGATIVE_RE.search(window) else "+"
+        return f"{sign}{magnitude}"
+
+    def _classify_fallback_route(self, q: str) -> str:
+        """
+        Score each route by regex keyword-hit count, in the explicit
+        priority order defined by _FALLBACK_ROUTE_PATTERNS (explain > 
+        simulate > predict). Replaces what used to be two sequential
+        if-checks, which resolved conflicting keywords (e.g. a query
+        containing both "why" and "simulate") via accidental code
+        ordering rather than a stated rule.
+        """
+        scores = {route: len(pattern.findall(q)) for route, pattern in _FALLBACK_ROUTE_PATTERNS.items()}
+        best_route = max(scores, key=lambda r: (scores[r], -_FALLBACK_ROUTE_PRIORITY.index(r)))
+        if scores[best_route] == 0:
+            return "forecast_predict"  # no keyword signal at all -> safest, most generic default
+        return best_route
+
     def _fallback_rule_based_router(self, query: str) -> Dict[str, Any]:
-        """Small deterministic fallback limited to the final engines."""
+        """
+        Small deterministic fallback limited to the final engines.
+
+        Unlike the earlier version, this extracts real entities from the
+        query (product_id, metric, horizon, date, change magnitude) instead
+        of hardcoding "P001" / "revenue" / a fixed date for every request,
+        and classifies the route via regex keyword scoring with an explicit
+        priority instead of sequential if-checks. It is still only used
+        when the primary LangGraph pipeline fails to even initialize --
+        normal per-query failures go through the validator/replanner loop,
+        not this path.
+        """
         q = query.lower()
-        # Dynamically extract entities while preserving the original defaults
-        product_match = _PRODUCT_ID_PATTERN.search(query)
+
+        product_match = _FALLBACK_PRODUCT_ID_RE.search(query)
         product_id = product_match.group(0).upper() if product_match else "P001"
 
-        date_match = _DATE_LITERAL.search(query)
-        date_val = date_match.group(1) if date_match else "2025-01-05"
+        metric_match = _FALLBACK_METRIC_RE.search(q)
+        metric_raw = metric_match.group(1).strip() if metric_match else "revenue"
+        target_metric = _FALLBACK_METRIC_MAP.get(metric_raw, "revenue")
 
-        if "what if" in q or "what-if" in q or "scenario" in q or "simulate" in q:
+        horizon_match = _FALLBACK_HORIZON_RE.search(q)
+        if horizon_match:
+            amount, unit = int(horizon_match.group(1)), horizon_match.group(2)
+            horizon_days = amount * {"day": 1, "week": 7, "month": 30}[unit]
+        else:
+            horizon_days = 30
+        horizon_days = max(1, min(horizon_days, 90))  # keep within a sane, supported range
+
+        # Anchor to the dataset's actual latest date rather than a hardcoded
+        # string that may not even fall inside the current data's range.
+        reference_date = get_reference_date()
+        resolved = resolve_date(query, reference=reference_date) or reference_date
+        date_str = resolved.strftime("%Y-%m-%d")
+
+        route = self._classify_fallback_route(q)
+
+        if route == "simulate_scenario":
             changes = []
             if "discount" in q:
-                changes.append("discount +5%")
+                changes.append(f"discount {self._extract_magnitude_near(q, 'discount', as_percent=True)}")
             if "shipping" in q:
-                changes.append("shipping +20")
+                changes.append(f"shipping {self._extract_magnitude_near(q, 'shipping', as_percent=False)}")
             if "marketing" in q:
-                changes.append("marketing +10%")
+                changes.append(f"marketing {self._extract_magnitude_near(q, 'marketing', as_percent=True)}")
             return {
-                "route": "simulate_scenario", 
-                "params": {
-                    "product_id": product_id, 
-                    "changes": changes or ["discount +5%"], 
-                    "horizon_days": 30
-                }
+                "route": "simulate_scenario",
+                "params": {"product_id": product_id, "changes": changes or ["discount +5%"], "horizon_days": horizon_days},
             }
-            
-        if "why" in q or "explain" in q or "driver" in q:
+
+        if route == "forecast_explain_drivers":
             return {
-                "route": "forecast_explain_drivers", 
-                "params": {
-                    "product_id": product_id, 
-                    "target_metric": "revenue", 
-                    "date": date_val
-                }
+                "route": "forecast_explain_drivers",
+                "params": {"product_id": product_id, "target_metric": target_metric, "date": date_str},
             }
-            
-        return {
-            "route": "forecast_predict", 
-            "params": {
-                "product_id": product_id, 
-                "horizon_days": 30
-            }
-        }
+
+        return {"route": "forecast_predict", "params": {"product_id": product_id, "horizon_days": horizon_days}}
