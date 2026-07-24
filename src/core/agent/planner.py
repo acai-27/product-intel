@@ -13,7 +13,9 @@ from src.core.simulator import ScenarioSimulator
 from src.utils.logger import setup_logger
 
 logger = setup_logger("planner_agent")
-
+# --- Define these at the very top of the file, outside any class ---
+_PRODUCT_ID_PATTERN = re.compile(r"\b[pP]\d{3,4}\b")
+_DATE_LITERAL = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 def _stream_text_and_visualizations(result: dict[str, Any], llm_client: Any):
     """Stream text synthesis and visualization events in parallel."""
@@ -222,6 +224,13 @@ class LLMPlannerAgent:
     def _fallback_rule_based_router(self, query: str) -> Dict[str, Any]:
         """Small deterministic fallback limited to the final engines."""
         q = query.lower()
+        # Dynamically extract entities while preserving the original defaults
+        product_match = _PRODUCT_ID_PATTERN.search(query)
+        product_id = product_match.group(0).upper() if product_match else "P001"
+
+        date_match = _DATE_LITERAL.search(query)
+        date_val = date_match.group(1) if date_match else "2025-01-05"
+
         if "what if" in q or "what-if" in q or "scenario" in q or "simulate" in q:
             changes = []
             if "discount" in q:
@@ -230,7 +239,29 @@ class LLMPlannerAgent:
                 changes.append("shipping +20")
             if "marketing" in q:
                 changes.append("marketing +10%")
-            return {"route": "simulate_scenario", "params": {"product_id": "P001", "changes": changes or ["discount +5%"], "horizon_days": 30}}
+            return {
+                "route": "simulate_scenario", 
+                "params": {
+                    "product_id": product_id, 
+                    "changes": changes or ["discount +5%"], 
+                    "horizon_days": 30
+                }
+            }
+            
         if "why" in q or "explain" in q or "driver" in q:
-            return {"route": "forecast_explain_drivers", "params": {"product_id": "P001", "target_metric": "revenue", "date": "2025-01-05"}}
-        return {"route": "forecast_predict", "params": {"product_id": "P001", "horizon_days": 30}}
+            return {
+                "route": "forecast_explain_drivers", 
+                "params": {
+                    "product_id": product_id, 
+                    "target_metric": "revenue", 
+                    "date": date_val
+                }
+            }
+            
+        return {
+            "route": "forecast_predict", 
+            "params": {
+                "product_id": product_id, 
+                "horizon_days": 30
+            }
+        }
