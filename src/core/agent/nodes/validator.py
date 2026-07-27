@@ -10,7 +10,7 @@ import re
 
 from src.core.agent.state import AgentState
 from src.utils.logger import setup_logger
-
+from src.core.agent.nodes.dag_planner import extract_query_entities
 logger = setup_logger("validator")
 
 _METRIC_TERMS: dict[str, tuple[str, ...]] = {
@@ -111,7 +111,45 @@ def _validate_single_nl2sql_result(query: str, result: Any) -> tuple[bool, str]:
 
     return True, "Validation passed."
 
+    
+_ENTITY_FIELDS = ("product_id", "category", "date", "target_date")
 
+
+def _validate_entity_consistency(
+        query: str,
+        step_results: dict[str, Any],
+    ) -> tuple[bool, str]:
+        """
+        Verify that tool outputs refer to the same explicit entities
+        (product/date/category) requested by the user.
+        """
+        entities = extract_query_entities(query)
+
+        # Nothing explicit mentioned by the user
+        if not entities:
+            return True, ""
+
+        for step_id, result in step_results.items():
+            if not isinstance(result, dict) or result.get("error"):
+                continue
+
+            for field in _ENTITY_FIELDS:
+                expected = entities.get(field)
+                actual = result.get(field)
+
+                # Only compare if both exist
+                if expected is None or actual is None:
+                    continue
+
+                if str(expected).upper() != str(actual).upper():
+                    return (
+                        False,
+                        f"Entity mismatch in {step_id}: expected "
+                        f"{field}={expected}, got {actual}."
+                    )
+
+        return True, "" 
+    
 def _has_analytical_payload(result: Any) -> bool:
     if not isinstance(result, dict) or result.get("error"):
         return False
@@ -188,6 +226,19 @@ def validate_results(state: AgentState) -> dict[str, Any]:
         notes.append("No valid data was produced by any step.")
     elif step_errors > 0 and analytical_successes == 0:
         passed = False
+
+
+    
+
+    entity_passed, entity_notes = _validate_entity_consistency(
+        query,
+        step_results,
+    )
+
+    if not entity_passed:
+        passed = False
+        notes.append(entity_notes)
+
 
     final_notes = "\n".join(notes) if notes else "Validation passed."
     if not passed:
