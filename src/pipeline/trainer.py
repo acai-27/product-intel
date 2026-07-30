@@ -51,8 +51,9 @@ def train_pipeline(data_path: str, models_dir: str, preprocessor_path: str, fast
         X_val, y_val = val_df[features], val_df[target]
         X_test, y_test = test_df[features], test_df[target]
         
-        train_data = lgb.Dataset(X_train, label=y_train)
-        val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
+        cat_features = [c for c in features if c.endswith('_code')]
+        train_data = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_features)
+        val_data = lgb.Dataset(X_val, label=y_val, reference=train_data, categorical_feature=cat_features)
         
         params = {
             "objective": "regression",
