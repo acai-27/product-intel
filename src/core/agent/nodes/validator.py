@@ -226,6 +226,11 @@ def validate_results(state: AgentState) -> dict[str, Any]:
         notes.append("No valid data was produced by any step.")
     elif step_errors > 0 and analytical_successes == 0:
         passed = False
+    elif step_errors > 0 and analytical_successes > 0:
+        notes.append(
+            f"Returning partial results: {analytical_successes} step(s) succeeded, "
+            f"{step_errors} failed."
+        )
 
 
     

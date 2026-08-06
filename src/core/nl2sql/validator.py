@@ -66,15 +66,34 @@ def _strip_comments(sql: str) -> str:
     return sql
 
 
+_TABLE_REF = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
+_FROM_JOIN_INTRO = re.compile(r"\b(?:FROM|JOIN)\s+", re.IGNORECASE)
+_CLAUSE_BOUNDARY = re.compile(
+    r"\b(?:WHERE|GROUP|ORDER|HAVING|LIMIT|UNION|JOIN|ON|USING)\b|\)",
+    re.IGNORECASE,
+)
+
+
 def _extract_table_names(sql: str) -> set[str]:
-    """Extract table names from FROM and JOIN clauses."""
+    """
+    Extract table names from FROM and JOIN clauses.
+
+    Handles comma-separated FROM lists (implicit joins) so that a disallowed
+    table cannot slip past the allowlist via `FROM allowed_table, secret_table`.
+    """
     tables: set[str] = set()
-    pattern = re.compile(
-        r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-        re.IGNORECASE,
-    )
-    for match in pattern.finditer(sql):
-        tables.add(match.group(1).lower())
+    for intro in _FROM_JOIN_INTRO.finditer(sql):
+        segment = sql[intro.end():]
+        boundary = _CLAUSE_BOUNDARY.search(segment)
+        if boundary:
+            segment = segment[: boundary.start()]
+        for part in segment.split(","):
+            part = part.strip()
+            if not part or part.startswith("("):
+                continue
+            token = _TABLE_REF.match(part)
+            if token:
+                tables.add(token.group(0).lower())
     return tables
 
 
