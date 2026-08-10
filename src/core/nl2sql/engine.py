@@ -49,7 +49,7 @@ class NL2SQLEngine:
                     dialect=self._dialect,
                     error_context=last_error if attempt > 0 else None,
                 )
-                validated_sql = validate_sql(sql)
+                validated_sql = validate_sql(sql, dialect=self._dialect)
                 result = execute_sql(self._db_engine, validated_sql)
                 return {
                     "query": question,
