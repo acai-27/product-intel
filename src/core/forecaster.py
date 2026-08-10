@@ -184,7 +184,7 @@ class ProductForecaster:
         # 3. Calculate and append Empirical Confidence Intervals per step
         for target in self.preprocessor.target_cols:
             target_lower = target.lower()
-            std_errors = self.step_residuals.get(target_lower, [0.0] * 100)
+            std_errors = self.step_residuals.get(target_lower) or [0.0] * 100
             
             conf_lowers = []
             conf_uppers = []
