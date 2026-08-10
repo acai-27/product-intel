@@ -120,7 +120,7 @@ def _nl2sql_query(params: dict[str, Any], engines: dict[str, Any]) -> dict[str, 
         db_engine = getattr(nl2sql_engine, "_db_engine", None)
         if db_engine is None:
             raise RuntimeError("NL2SQL engine does not expose a database engine for direct SQL execution.")
-        validated_sql = validate_sql(query)
+        validated_sql = validate_sql(query, dialect=db_engine.dialect.name)
         result = execute_sql(db_engine, validated_sql)
         return {
             "query": query,
