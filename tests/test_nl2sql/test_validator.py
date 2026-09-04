@@ -48,11 +48,12 @@ class TestValidateSQL:
                 "FROM experiments e JOIN reports r ON r.experiment_id = e.id"
             )
 
-    def test_accepts_events_table(self) -> None:
-        sql = validate_sql(
-            "SELECT event_type, COUNT(*) AS cnt FROM events GROUP BY event_type"
-        )
-        assert "events" in sql.lower()
+    def test_rejects_events_table(self) -> None:
+        """events was removed from ALLOWED_TABLES — queries against it must be rejected."""
+        with pytest.raises(SQLValidationError, match="disallowed"):
+            validate_sql(
+                "SELECT event_type, COUNT(*) AS cnt FROM events GROUP BY event_type"
+            )
 
 
 class TestAllowlistBypasses:
@@ -113,12 +114,12 @@ class TestValidSqlIsPreserved:
         assert "product_performance" in sql.lower()
         assert "LIMIT 100" in sql.upper()
 
-    def test_allows_join_between_allowed_tables(self) -> None:
-        sql = validate_sql(
-            "SELECT p.product_id, e.event_type FROM product_performance p "
-            "JOIN events e ON e.product_id = p.product_id"
-        )
-        assert "LIMIT 100" in sql.upper()
+    # test_allows_join_between_allowed_tables — RETIRED
+    # This test validated that a JOIN across two allowed tables (product_performance
+    # and events) passed the validator.  With events removed from ALLOWED_TABLES,
+    # product_performance is the only allowed table — a self-join wouldn't cover
+    # the original scenario and would be misleading.  Reintroduce a real version
+    # of this test if a second table is ever added back to ALLOWED_TABLES.
 
     def test_strips_comments_from_output(self) -> None:
         sql = validate_sql(

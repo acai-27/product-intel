@@ -9,9 +9,6 @@ from typing import Any
 # Tables the NL2SQL engine is allowed to query
 ALLOWED_TABLES: frozenset[str] = frozenset({
     "product_performance",
-    "events",
-    "snapshots",
-    "knowledge_base",
 })
 
 TABLE_SCHEMAS: dict[str, dict[str, Any]] = {
@@ -43,46 +40,6 @@ TABLE_SCHEMAS: dict[str, dict[str, Any]] = {
             "website_sales_pct": "FLOAT",
             "nykaa_sales_pct": "FLOAT",
             "mobile_app_sales_pct": "FLOAT",
-        },
-    },
-    "events": {
-        "description": "Business events such as anomalies, stockouts, and campaign changes.",
-        "columns": {
-            "event_date": "DATE",
-            "product_id": "VARCHAR — nullable",
-            "event_type": "VARCHAR",
-            "severity": "VARCHAR — Info, Medium, High, Critical",
-            "kpis_affected": "VARCHAR",
-            "reason": "TEXT",
-            "business_impact": "TEXT",
-            "confidence": "FLOAT",
-        },
-    },
-
-    "snapshots": {
-        "description": "Daily aggregated business snapshots across all products.",
-        "columns": {
-            "snapshot_date": "DATE",
-            "total_revenue": "FLOAT",
-            "total_profit": "FLOAT",
-            "total_orders": "INTEGER",
-            "mean_conversion_rate": "FLOAT",
-            "mean_retention_rate": "FLOAT",
-            "total_marketing_spend": "FLOAT",
-            "total_inventory": "INTEGER",
-            "avg_discount_pct": "FLOAT",
-            "avg_price": "FLOAT",
-            "summary": "TEXT",
-        },
-    },
-
-    "knowledge_base": {
-        "description": "Synthesized business rules and patterns from past analyses.",
-        "columns": {
-            "pattern_type": "VARCHAR",
-            "query_context": "TEXT",
-            "confidence_score": "FLOAT",
-            "created_at": "DATE",
         },
     },
 }

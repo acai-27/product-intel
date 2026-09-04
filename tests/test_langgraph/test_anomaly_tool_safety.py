@@ -12,6 +12,7 @@ def _result(product_id: str, deviations: list[float]):
             SimpleNamespace(
                 status="Risk",
                 deviation_pct=deviation,
+                
             )
             for deviation in deviations
         ],

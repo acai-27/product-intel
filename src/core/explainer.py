@@ -79,7 +79,7 @@ class PredictionExplainer:
         target_metric_cap = target_metric.title()
         if target_metric_cap not in self.forecaster.models:
             # Try original formatting
-            matched = [t for t in self.forecaster.models.keys() if t.lower() == target_metric.lower()]
+            matched = [t for t in self.forecaster.models if t.lower() == target_metric.lower()]
             if matched:
                 target_metric_cap = matched[0]
             else:
@@ -105,7 +105,7 @@ class PredictionExplainer:
             transformed = preprocessor.transform(prod_df)
             row_idx = transformed[transformed["date"] == target_date]
             if len(row_idx) == 0:
-                raise ValueError(f"No data available for product {product_id} on date {date}.")
+                raise ValueError(f"No data available for product {product_id} on date {target_date}.")
             
             X_explain = row_idx[preprocessor.feature_cols]
             pred_value = row_idx[target_metric_cap].values[0]
@@ -125,7 +125,7 @@ class PredictionExplainer:
             transformed = preprocessor.transform(combined)
             row_idx = transformed[transformed["date"] == target_date]
             if len(row_idx) == 0:
-                raise ValueError(f"Failed to generate forecast features for product {product_id} on date {date}.")
+                raise ValueError(f"Failed to generate forecast features for product {product_id} on date {target_date}.")
                 
             X_explain = row_idx[preprocessor.feature_cols]
             pred_value = row_idx[target_metric_cap].values[0]

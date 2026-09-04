@@ -2,7 +2,7 @@ import json
 import math
 import datetime
 from typing import Any
-from sqlalchemy import Column, Integer, Float, String, Date, Text, JSON
+from sqlalchemy import Column, Integer, Float, String, Date, Text, JSON, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from src.core.database import Base
 
@@ -43,63 +43,31 @@ class SafeJSON(JSON):
             return None
         return _sanitize_json_value(value)
 
-class Snapshot(Base):
-    __tablename__ = 'snapshots'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    snapshot_date = Column(Date, unique=True, nullable=False, index=True)
-    total_revenue = Column(Float, nullable=False)
-    total_profit = Column(Float, nullable=False)
-    total_orders = Column(Integer, nullable=False)
-    mean_conversion_rate = Column(Float, nullable=False)
-    mean_retention_rate = Column(Float, nullable=False)
-    total_marketing_spend = Column(Float, nullable=False)
-    total_inventory = Column(Integer, nullable=False)
-    avg_discount_pct = Column(Float, nullable=False)
-    avg_price = Column(Float, nullable=False)
-    top_products = Column(SafeJSON)
-    worst_products = Column(SafeJSON)
-    largest_growth = Column(SafeJSON)
-    largest_decline = Column(SafeJSON)
-    inventory_alerts = Column(SafeJSON)
-    channel_mix = Column(SafeJSON)
-    campaign_mix = Column(SafeJSON)
-    traffic_mix = Column(SafeJSON)
-    summary = Column(Text)
 
-class Event(Base):
-    __tablename__ = 'events'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    event_date = Column(Date, nullable=False, index=True)
-    product_id = Column(String(50), nullable=True, index=True)
-    event_type = Column(String(100), nullable=False, index=True)
-    severity = Column(String(20), nullable=False, index=True)
-    kpis_affected = Column(String(200))
-    reason = Column(Text)
-    business_impact = Column(Text)
-    confidence = Column(Float, default=1.0)
-
-class KnowledgeBase(Base):
-    __tablename__ = 'knowledge_base'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    pattern_type = Column(String(100), nullable=False, index=True)
-    query_context = Column(Text)
-    synthesized_rules = Column(SafeJSON)
-    confidence_score = Column(Float)
-    created_at = Column(Date, default=datetime.date.today)
-    driver = Column(String(100), index=True)
-    segment = Column(String(100), index=True)
-    season = Column(String(50), index=True)
-    outcome_score = Column(Float)
-    confidence = Column(Float)
-
-class ProductPerformance(Base):
-    __tablename__ = 'product_performance'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    date = Column(Date, nullable=False, index=True)
-    product_id = Column(String(50), nullable=False, index=True)
-    category = Column(String(100), nullable=False, index=True)
+class Product(Base):
+    __tablename__ = 'products'
+    product_id = Column(String(50), primary_key=True)
+    category = Column(String(100), nullable=False)
     subcategory = Column(String(100), nullable=True)
     brand = Column(String(100), nullable=True)
+    created_at = Column(Date, nullable=False, default=datetime.date.today)
+
+    metrics = relationship("ProductMetricsDaily", back_populates="product")
+
+
+class ProductMetricsDaily(Base):
+    __tablename__ = 'product_metrics_daily'
+    __table_args__ = (
+        CheckConstraint('discount_pct BETWEEN 0 AND 100', name='ck_discount_pct_range'),
+    )
+
+    product_id = Column(
+        String(50),
+        ForeignKey('products.product_id', onupdate='CASCADE', ondelete='RESTRICT'),
+        primary_key=True,
+        nullable=False,
+    )
+    date = Column(Date, primary_key=True, nullable=False, index=True)
     avg_ltv = Column(Float, nullable=True)
     dominant_age_group = Column(String(50), nullable=True)
     inventory_available = Column(Integer, nullable=True)
@@ -134,4 +102,4 @@ class ProductPerformance(Base):
     conversion_rate = Column(Float, nullable=True)
     retention_rate = Column(Float, nullable=True)
 
-
+    product = relationship("Product", back_populates="metrics")
